@@ -1,0 +1,199 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Staking {
+    address public owner;
+
+    struct Position {
+        uint positionId;
+        address walletAddress;
+        uint createdDate;
+        uint unlockDate;
+        uint percentInterest;
+        uint weiStaked;
+        uint weiInterest;
+        bool open;
+    }
+       
+    struct User {
+        bool referred;
+        address referred_by;
+    }   
+
+    struct Referal_levels {
+        uint256 level_1;
+        uint256 level_2;
+        uint256 level_3;
+        uint256 level_4;
+        uint256 level_5;
+        uint256 level_6;
+        uint256 level_7;
+        uint256 level_8;
+        uint256 level_9;
+        uint256 level_10;
+    }
+
+    mapping(address => Referal_levels) public refer_info;
+    mapping(address => User) public user_info;
+
+
+
+    Position position;
+    uint public currentPositionId;
+    mapping(uint => Position) public positions;
+    mapping(address => uint[]) public positionIdsByAddress;
+    mapping(uint => uint) public tiers; 
+    uint [] public lockPeriods;
+
+    constructor() payable {
+        owner = msg.sender;
+        currentPositionId = 0;
+     //   tiers[30] = 700;
+        tiers[90] = 15;
+        tiers[270] = 20;
+
+       // lockPeriods.push(30);
+        lockPeriods.push(90);
+        lockPeriods.push(270);
+
+    }
+   
+    function stakeEther(uint numSeconds , address ref_add) public  payable {
+        require(tiers[numSeconds] > 0, "Mapping not found");
+        require(user_info[msg.sender].referred == false, " Already referred ");
+        require(ref_add != msg.sender, " You cannot refer yourself ");
+
+         positions[currentPositionId] = Position(
+            currentPositionId,
+            msg.sender,
+            block.timestamp,
+            block.timestamp +(numSeconds * 1 seconds),
+            tiers[numSeconds], 
+            msg.value,
+            calculateInterest(tiers[numSeconds], msg.value),
+            true
+        );
+        positionIdsByAddress[msg.sender].push(currentPositionId);
+        currentPositionId +=1;
+        user_info[msg.sender].referred_by = ref_add;
+        user_info[msg.sender].referred = true;
+        address level1 = user_info[msg.sender].referred_by;
+        address level2 = user_info[level1].referred_by;
+        address level3 = user_info[level2].referred_by;
+        address level4 = user_info[level3].referred_by;
+        address level5 = user_info[level4].referred_by;
+        address level6 = user_info[level5].referred_by;
+        address level7 = user_info[level6].referred_by;
+        address level8 = user_info[level7].referred_by;
+        address level9 = user_info[level8].referred_by;
+        address level10 = user_info[level9].referred_by;
+
+
+        if ((level1 != msg.sender) && (level1 != address(0))) {
+        refer_info[level1].level_1 += 1;
+            
+        }
+        if ((level2 != msg.sender) && (level2 != address(0))) {
+            refer_info[level2].level_2 += 1;
+        }
+        if ((level3 != msg.sender) && (level3 != address(0))) {
+            refer_info[level3].level_3 += 1;
+        }
+        if ((level4 != msg.sender) && (level4 != address(0))) {
+            refer_info[level4].level_4 += 1;
+        }
+          if ((level5 != msg.sender) && (level5 != address(0))) {
+            refer_info[level5].level_5 += 1;
+        }
+          if ((level6 != msg.sender) && (level6 != address(0))) {
+            refer_info[level6].level_6 += 1;
+        }
+          if ((level7 != msg.sender) && (level7 != address(0))) {
+            refer_info[level7].level_7 += 1;
+        }
+          if ((level7 != msg.sender) && (level7 != address(0))) {
+            refer_info[level7].level_7 += 1;
+        }
+          if ((level8 != msg.sender) && (level8 != address(0))) {
+            refer_info[level8].level_8 += 1;
+        }
+          if ((level9 != msg.sender) && (level9 != address(0))) {
+            refer_info[level9].level_9 += 1;
+        }
+          if ((level10 != msg.sender) && (level10 != address(0))) {
+            refer_info[level10].level_10 += 1;
+        }
+     
+
+
+    }
+
+    function calculateInterest(uint basisPoints, uint weiAmount) private pure returns(uint) {
+        return basisPoints  * weiAmount / 100; // 700 /10000 => 0.07
+    }
+
+    function modifyLockPeriods(uint numSeconds, uint basisPoints) external{
+        require(owner == msg.sender, "only owner may modify staking periods" );
+
+        tiers[numSeconds] = basisPoints;
+        lockPeriods.push(numSeconds);
+    }
+
+    function getLockPeriods() external view returns(uint[] memory) {
+        return lockPeriods;
+    }
+
+    function getInterestRate(uint numSeconds) external view returns(uint) {
+        return tiers[numSeconds];
+    }
+
+    function getPositionById(uint positionId) external view returns(Position memory) {
+        return positions[positionId];
+    }
+
+    function getPositionIdsForAddress(address walletAddress) external view returns(uint[] memory){
+        return positionIdsByAddress[walletAddress];
+    }
+
+    function changeUnlockDate(uint positionId,  uint newUnlockDate) external {
+        require(owner == msg.sender, "Only owner may modify staking periods");
+
+        positions[positionId].unlockDate = newUnlockDate;
+    }
+
+    function closePosition(uint positionId) external {
+        require(positions[positionId].walletAddress == msg.sender, "Only position creator may modifiy position");
+        require(positions[positionId].open == true, "Position is closed");
+
+        positions[positionId].open = false;
+
+        if(block.timestamp > positions[positionId].unlockDate){
+            uint amount = positions[positionId].weiStaked + positions[positionId].weiInterest;
+            payable(msg.sender).call{value: amount}('');
+        }else {
+           revert(" staked time period not completed ");
+          //payable(msg.sender).call{value: positions[positionId].weiStaked}("");
+        }
+
+
+    }
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+}
+
+
+
