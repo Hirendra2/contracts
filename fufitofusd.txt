@@ -1,0 +1,47 @@
+
+pragma solidity ^0.8.7;
+// SPDX-License-Identifier: MIT
+
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+contract FUfiFusd {
+        
+        
+        uint256 public balance;
+        address public owner;
+        
+    constructor() {
+        owner = msg.sender;
+    }
+    
+    receive() payable external {
+        balance += msg.value;
+        emit TransferReceived(msg.sender, msg.value);
+    }    
+
+
+    event TransferReceived(address _from, uint _amount);
+    event TransferSent(address _from, address _destAddr, uint _Tamount);
+    mapping (address => uint) public balances;
+
+    function burn(address payable _to) public payable returns(uint) {
+          balances[msg.sender] += msg.value;
+        _to.transfer(msg.value);
+        return balances[msg.sender];
+    }
+
+    function getBalance() public view returns(uint){
+        return balances[msg.sender];
+        }
+        
+    function Fusdburnreawrd(IERC20 token, address to, uint256 rate , uint256 amount) public {
+        require(msg.sender == owner, "Only owner can withdraw funds"); 
+        uint256 erc20balance = token.balanceOf(address(this));
+        require(amount <= erc20balance, "balance is low");
+        uint Tamount = amount / rate;
+        token.transfer(to, Tamount);
+        emit TransferSent(msg.sender, to, Tamount);
+    }    
+   function balanceOf(address tokenOwner) public  returns (uint256 balance) {
+        return balances[tokenOwner];
+    }
+}
